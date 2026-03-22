@@ -58,12 +58,14 @@ strengthst4 = [100, 50]
 
 atol = 0.05
 
-ft3 = lambda x, y: sum(
+
+def ft3(x, y): return sum(
     s for (x0, y0), s in zip(sourcest3, strengthst3)
     if np.isclose(x, x0, atol=atol) and np.isclose(y, y0, atol=atol)
 )
 
-ft4 = lambda x, y: sum(
+
+def ft4(x, y): return sum(
     s for (x0, y0), s in zip(sourcest4, strengthst4)
     if np.isclose(x, x0, atol=atol) and np.isclose(y, y0, atol=atol)
 )
@@ -113,6 +115,14 @@ def fv(x, y):
 def exact_solution(x, y):
     return np.sin(np.pi * x) * np.sin(np.pi * y)
 
+def exact_solution_t(x, y, t):
+    """Точний аналітичний розв'язок, що залежить від часу"""
+    return np.exp(-t) * np.sin(np.pi * x) * np.sin(np.pi * y)
+
+def fv_space(x, y):
+    """Просторова (базова) частина функції джерела"""
+    return (2 * np.pi**2 - 1) * np.sin(np.pi * x) * np.sin(np.pi * y)
+
 
 def main():
     verticest1 = [(0, 0), (1.5, 0), (1, 1), (0, 0.75)]
@@ -123,7 +133,7 @@ def main():
     verticest6 = [(0, 0), (1, 0), (1, 1), (0, 1)]
     verticesv = [(0, 0), (1, 0), (1, 1), (0, 1)]
 
-    ap = 1
+    ap = 3
 
     ug = [
         [f2e.TypeOfBoundCond.DIRICHLET, ug_3],  # нижнє (y = 0)
@@ -136,6 +146,74 @@ def main():
     p = 10
     m = 10
 
+    # ver
+    print("\n--- Запуск верифікаційного тесту ---")
+    NLv, ELv = m2d.uniform_mesh_with_vertices(verticesv, p, m, element_type, ap)
+    
+    # 1. Обчислюємо локальні матриці
+    elem_stiffness = s2d.compute_element_stiffness(ELv, NLv, ap, k1=k1, k2=k2)
+    elem_mass = s2d.compute_element_mass_matrix(ELv, NLv, ap) 
+    
+    # 2. Збираємо глобальні матриці
+    K = s2d.assemble_global_matrix(NLv, ELv, p, m, elem_stiffness, ap)
+    M = s2d.assemble_global_matrix(NLv, ELv, p, m, elem_mass, ap)
+    
+    # 3. Налаштування часу
+    dt = 0.01          
+    t_end = 1.0        
+    num_steps = int(t_end / dt)
+    theta = 0.5        # Кранк-Ніколсон
+    
+    # 4. Формуємо ліву матрицю A
+    A_matrix = M + theta * dt * K
+    A_matrix = f2e.apply_boundary_conditions_matrix(A_matrix, p, m, ug, ap)
+    
+    # 5. Початкові умови U^0 при t = 0
+    # ВАЖЛИВО: Вони тепер не нульові! Ми маємо взяти точні значення функції в момент часу 0
+    num_total_nodes = (ap * p + 1) * (ap * m + 1)
+    U_n = np.zeros(num_total_nodes)
+    for i, (x_val, y_val) in enumerate(NLv):
+        U_n[i] = exact_solution_t(x_val, y_val, 0.0) 
+    
+    print("Обчислення просторового вектора навантаження...")
+    # Обчислюємо інтеграли Гаусса ТІЛЬКИ ОДИН РАЗ для просторової частини
+    F_base = s2d.set_up_vector(fv_space, NLv, ELv, p, m, ap)
+    
+    print("Починаємо інтегрування по часу...")
+    current_t = 0.0
+    for step in range(num_steps):
+        t_n = current_t
+        t_n_plus_1 = current_t + dt
+        
+        # Масштабуємо базовий вектор на експоненту для відповідного моменту часу
+        F_n = F_base * np.exp(-t_n)
+        F_n_plus_1 = F_base * np.exp(-t_n_plus_1)
+        
+        # Права частина
+        right_matrix = M - (1 - theta) * dt * K
+        b_vector = right_matrix @ U_n + dt * (theta * F_n_plus_1 + (1 - theta) * F_n)
+        
+        # Граничні умови
+        b_vector = f2e.apply_boundary_conditions_vector(b_vector, p, m, NLv, ug, ap, current_time=t_n_plus_1)
+        
+        # Розв'язок
+        U_next = np.linalg.solve(A_matrix, b_vector)
+        U_n = U_next
+        
+        current_t += dt
+        
+        if (step + 1) % 10 == 0:
+            print(f"Крок {step+1:3d}/{num_steps}, Час = {current_t:.3f}")
+            
+    print("Інтегрування завершено!")
+    
+    # 6. ВЕРИФІКАЦІЯ
+    # Створюємо лямбда-функцію, яка фіксує кінцевий час t_end для передачі у твою функцію малювання
+    exact_final = lambda x, y: exact_solution_t(x, y, t_end)
+    
+    print("\nАналіз похибки в кінцевий момент часу:")
+    g2d.plot_2d_solution2(U_n, NLv, ELv, exact_solution=exact_final)
+    
     # test1
     # NLt1, ELt1 = m2d.uniform_mesh_with_vertices(verticest1, p, m, element_type, ap)
     # f_loadt1 = s2d.set_up_vector(ft1, NLt1, ELt1, p, m, ap)
@@ -219,25 +297,6 @@ def main():
     # print(f_loadt6)
     # print(matrixt6)
     # print(ut6)
-
-    # ver
-    NLv, ELv = m2d.uniform_mesh_with_vertices(verticesv, p, m, element_type, ap)
-    f_loadv = s2d.set_up_vector(fv, NLv, ELv, p, m, ap)
-    elem_matricesv = s2d.compute_element_stiffness(ELv, NLv, ap, k1=k1, k2=k2)
-    matrixv = s2d.assemble_global_stiffness_matrix(NLv, ELv, p, m, elem_matricesv, ap)
-    matrixv, f_loadv = f2e.apply_boundary_conditions(matrixv, f_loadv, p, m, NLv, ug, ap)
-    uv = np.linalg.solve(matrixv, f_loadv)
-    g2d.plot_2d_solution(uv, NLv, ELv)
-    print("Координати вузлів:\n", NLv)
-    print("Елементи:\n", ELv)
-    print(f_loadv)
-    print(matrixv)
-    print(uv)
-    g2d.plot_2d_solution2(uv, NLv, ELv, exact_solution=exact_solution)
-    g2d.plot_2d_solution_exact(exact_solution, NLv)
-
-    # g2d.plot_2d_solution_difference(uv, NLv, exact_solution)
-
 
 if __name__ == '__main__':
     main()

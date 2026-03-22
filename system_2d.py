@@ -167,7 +167,7 @@ def compute_element_stiffness(elements, nodes, ap, k1, k2):
     return element_matrices
 
 
-def assemble_global_stiffness_matrix(nodes, elements, p, m, element_matrices, ap):
+def assemble_global_matrix(nodes, elements, p, m, element_matrices, ap):
     num_nodes = (ap * p + 1) * (ap * m + 1)
     K = np.zeros((num_nodes, num_nodes))
 
@@ -181,6 +181,84 @@ def assemble_global_stiffness_matrix(nodes, elements, p, m, element_matrices, ap
                 K[im, jm] += em[i, j]
 
     return K
+
+
+
+def compute_element_mass_matrix(elements, nodes, ap):
+    """
+    Обчислює локальні матриці мас для всіх елементів.
+    M_ij = інтеграл(N_i * N_j * det(J))
+    """
+    element_mass_matrices = []
+    
+    # Нам потрібні похідні лише для обчислення Якобіана, 
+    # самі базисні функції ми братимемо з b2f.N
+    dN_dksi_list, dN_deta_list = compute_partial_derivatives(ap)
+
+    # Задаємо точки і ваги Гаусса так само, як і для матриці жорсткості
+    if ap == 1:
+        gauss_points = [-1 / np.sqrt(3), 1 / np.sqrt(3)]
+        gauss_weights = [1.0, 1.0]
+    elif ap == 2:
+        gauss_points = [-np.sqrt(3 / 5), 0, np.sqrt(3 / 5)]
+        gauss_weights = [5 / 9, 8 / 9, 5 / 9]
+    elif ap == 3:
+        gauss_points = [
+            -np.sqrt((3 + 2 * np.sqrt(6 / 5)) / 7),
+            -np.sqrt((3 - 2 * np.sqrt(6 / 5)) / 7),
+             np.sqrt((3 - 2 * np.sqrt(6 / 5)) / 7),
+             np.sqrt((3 + 2 * np.sqrt(6 / 5)) / 7),
+        ]
+        gauss_weights = [
+            (18 - np.sqrt(30)) / 36,
+            (18 + np.sqrt(30)) / 36,
+            (18 + np.sqrt(30)) / 36,
+            (18 - np.sqrt(30)) / 36,
+        ]
+
+    for noe in elements:
+        x_coords = [nodes[i][0] for i in noe]
+        y_coords = [nodes[i][1] for i in noe]
+
+        M_local = np.zeros((len(noe), len(noe)))
+
+        for i in range(len(noe)):
+            for j in range(len(noe)):
+                integral_value = 0.0
+
+                for ksi_idx, ksi_point in enumerate(gauss_points):
+                    for eta_idx, eta_point in enumerate(gauss_points):
+                        # Обчислюємо Якобіан для поточних точок Гаусса
+                        J = compute_jacobian(ksi_point, eta_point, x_coords, y_coords, dN_dksi_list, dN_deta_list)
+                        detJ = np.abs(np.linalg.det(J)) # Обов'язково модуль визначника!
+
+                        # Обчислюємо значення самих базисних функцій
+                        N_i = b2f.N(i, ksi_point, eta_point, ap)
+                        N_j = b2f.N(j, ksi_point, eta_point, ap)
+
+                        # Інтегруємо: N_i * N_j * |J| * w_ksi * w_eta
+                        integrand = N_i * N_j * detJ
+                        integral_value += integrand * gauss_weights[ksi_idx] * gauss_weights[eta_idx]
+
+                M_local[i, j] = integral_value
+                
+        element_mass_matrices.append(M_local)
+
+    return element_mass_matrices
+
+
+
+def crank_nicolson(K, M, f, u0, dt, num_steps):
+    u = u0.copy()
+
+    A = M + (dt / 2) * K
+    B = M - (dt / 2) * K
+
+    for n in range(num_steps):
+        rhs = B @ u + dt * f
+        u = np.linalg.solve(A, rhs)
+
+    return u
 
 
 def compute_jacobian(ksi, eta, x_coords, y_coords, dN_dksi_funcs, dN_deta_funcs):

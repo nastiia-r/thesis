@@ -1,17 +1,31 @@
 from enum import Enum
 
 
-def apply_boundary_conditions(matrix, f_load, p, m, nodes, ug, ap=1):
+def apply_boundary_conditions_matrix(matrix, p, m, ug, ap=1):
+    """Модифікує лише глобальну матрицю для умов Діріхле (до циклу по часу)."""
     validate_boundary_conditions(ug)
     bounds = get_boundary_elements_and_nodes(p, m, ug, ap)
     n = len(ug)
     for i in range(n):
-        for index in bounds[i][1]:  # [1] — список вузлів
-            for j in range(len(matrix[index])):
-                matrix[index][j] = 0
-            matrix[index][index] = 1
-            f_load[index] = ug[i][1](nodes[index][0], nodes[index][1])  # <== ось тут виправлено
-    return (matrix, f_load)
+        if ug[i][0] == TypeOfBoundCond.DIRICHLET:
+            for index in bounds[i][1]:
+                # Занулюємо рядок
+                matrix[index, :] = 0.0
+                # Ставимо 1 на діагональ
+                matrix[index, index] = 1.0
+    return matrix
+
+def apply_boundary_conditions_vector(f_load, p, m, nodes, ug, ap=1, current_time=0.0):
+    """Модифікує вектор навантаження для умов Діріхле (на кожному кроці)."""
+    bounds = get_boundary_elements_and_nodes(p, m, ug, ap)
+    n = len(ug)
+    for i in range(n):
+        if ug[i][0] == TypeOfBoundCond.DIRICHLET:
+            for index in bounds[i][1]:
+                # Встановлюємо значення функції Діріхле (вона може залежати від часу, тому передаємо current_time)
+                # Якщо твої ug_i не приймають час, можна просто передавати x, y: ug[i][1](x, y)
+                f_load[index] = ug[i][1](nodes[index][0], nodes[index][1]) 
+    return f_load
 
 
 def get_boundary_elements_and_nodes(p, m, ug, degree=1):
