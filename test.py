@@ -4,12 +4,10 @@ import mesh_2d as m2d
 import system_2d as s2d
 import finite_element_2d as f2e
 import graph2d as g2d
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 
 def ug_1(x, y):
-    return 1
+    return 0
     # return y**2
     # return y
     # return y**2
@@ -41,6 +39,7 @@ def k1(x, y):
 def k2(x, y):
     return 1
 
+
 # test1
 def ft1(x, y, A=100, x0=0.5, y0=0.5, const=0.1):
     return A * np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / const)
@@ -69,17 +68,6 @@ ft4 = lambda x, y: sum(
     if np.isclose(x, x0, atol=atol) and np.isclose(y, y0, atol=atol)
 )
 
-
-# time-dependent source and integration parameters
-def f_time(x, y, t, T=1.0):
-    return (1 + 0.5 * np.sin(2 * np.pi * t / T)) * ft1(x, y)
-
-
-def u0(x, y):
-    return 0.0
-
-
-theta = 1.0  # 1.0=Backward Euler, 0.5=Crank–Nicolson
 
 # test3
 def k1t5(x, y):
@@ -147,87 +135,20 @@ def main():
     element_type = 'D2QU4N'
     p = 10
     m = 10
-       
-    T = 2.0 # кінцевий час
-    Δt = 0.05  # крок по часу
-
-    n_steps = int(T / Δt)
-    print(n_steps)
-
 
     # test1
-    NLt1, ELt1 = m2d.uniform_mesh_with_vertices(verticest1, p, m, element_type, ap)
-    f_loadt1 = s2d.set_up_vector(ft1, NLt1, ELt1, p, m, ap)
-
-    elem_matricest1 = s2d.compute_element_stiffness(ELt1, NLt1, ap, k1=k1, k2=k2)
-    matrixt1 = s2d.assemble_global_stiffness_matrix(NLt1, ELt1, p, m, elem_matricest1, ap)
-
-
-    M_elements = s2d.compute_element_mass(ELt1, NLt1, ap)
-    M_global = s2d.assemble_global_stiffness_matrix(NLt1, ELt1, p, m, M_elements, ap)
-
-    ut1 = np.array([u0(xi, yi) for xi, yi in NLt1])
-    x = NLt1[:, 0]
-    y = NLt1[:, 1]
-
-    plt.ion()
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-    plt.show(block=False)
-    for step in range(n_steps):
-        t_n = step * Δt
-        t_theta = t_n + theta * Δt
-        f_vec = s2d.set_up_vector(lambda X, Y: f_time(X, Y, t_theta, T), NLt1, ELt1, p, m, ap)
-
-        A = M_global / Δt + theta * matrixt1
-        rhs = (M_global / Δt - (1 - theta) * matrixt1) @ ut1 + f_vec
-        A, rhs = f2e.apply_boundary_conditions(A, rhs, p, m, NLt1, ug, ap)
-        u_next = np.linalg.solve(A, rhs)
-        ut1 = u_next.copy()
-
-        if step % 5 == 0:
-            ax.clear()
-            ax.plot_trisurf(x, y, ut1, cmap="plasma", linewidth=0.2)
-            ax.set_title(f"t = {Δt*(step+1):.2f} c")
-            ax.set_xlabel("x")
-            ax.set_ylabel("y")
-            ax.set_zlabel("u(x,y)")
-            fig.canvas.draw_idle()
-            fig.canvas.flush_events()
-            plt.pause(0.05)
-
-        # if step % 5 == 0:
-        #     fig = plt.figure()
-        #     ax = fig.add_subplot(111, projection="3d")
-        #     ax.plot_trisurf(x, y, ut1, cmap="plasma", linewidth=0.2)
-        #     ax.set_title(f"t = {Δt*(step+1):.2f} c")
-        #     ax.set_xlabel("x"); ax.set_ylabel("y"); ax.set_zlabel("u(x,y)")
-
-
-    plt.ioff()
-    plt.show()
-
-
-
+    # NLt1, ELt1 = m2d.uniform_mesh_with_vertices(verticest1, p, m, element_type, ap)
+    # f_loadt1 = s2d.set_up_vector(ft1, NLt1, ELt1, p, m, ap)
+    # elem_matricest1 = s2d.compute_element_stiffness(ELt1, NLt1, ap, k1=k1, k2=k2)
+    # matrixt1 = s2d.assemble_global_stiffness_matrix(NLt1, ELt1, p, m, elem_matricest1, ap)
     # matrixt1, f_loadt1 = f2e.apply_boundary_conditions(matrixt1, f_loadt1, p, m, NLt1, ug, ap)
     # ut1 = np.linalg.solve(matrixt1, f_loadt1)
-
-
-
-    g2d.plot_2d_solution(ut1, NLt1, ELt1)
-    print("Координати вузлів:\n", NLt1)
-    print("Елементи:\n", ELt1)
-    print(f_loadt1)
-    print(matrixt1)
-    print(ut1)
-    plt.figure(figsize=(6, 5))
-    plt.tricontourf(x, y, ut1, levels=30, cmap="inferno")
-    plt.colorbar(label="u(x, y, t_final)")
-    plt.title("Фінальний розподіл температури")
-    plt.xlabel("x")
-    plt.ylabel("y")
-    plt.tight_layout()
-    plt.show()
+    # g2d.plot_2d_solution(ut1, NLt1, ELt1)
+    # print("Координати вузлів:\n", NLt1)
+    # print("Елементи:\n", ELt1)
+    # print(f_loadt1)
+    # print(matrixt1)
+    # print(ut1)
 
     # test2
     # NLt2, ELt2= m2d.uniform_mesh_with_vertices(verticest2, p, m, element_type, ap)
@@ -300,20 +221,20 @@ def main():
     # print(ut6)
 
     # ver
-    # NLv, ELv = m2d.uniform_mesh_with_vertices(verticesv, p, m, element_type, ap)
-    # f_loadv = s2d.set_up_vector(fv, NLv, ELv, p, m, ap)
-    # elem_matricesv = s2d.compute_element_stiffness(ELv, NLv, ap, k1=k1, k2=k2)
-    # matrixv = s2d.assemble_global_stiffness_matrix(NLv, ELv, p, m, elem_matricesv, ap)
-    # matrixv, f_loadv = f2e.apply_boundary_conditions(matrixv, f_loadv, p, m, NLv, ug, ap)
-    # uv = np.linalg.solve(matrixv, f_loadv)
-    # g2d.plot_2d_solution(uv, NLv, ELv)
-    # print("Координати вузлів:\n", NLv)
-    # print("Елементи:\n", ELv)
-    # print(f_loadv)
-    # print(matrixv)
-    # print(uv)
-    # g2d.plot_2d_solution2(uv, NLv, ELv, exact_solution=exact_solution)
-    # g2d.plot_2d_solution_exact(exact_solution, NLv)
+    NLv, ELv = m2d.uniform_mesh_with_vertices(verticesv, p, m, element_type, ap)
+    f_loadv = s2d.set_up_vector(fv, NLv, ELv, p, m, ap)
+    elem_matricesv = s2d.compute_element_stiffness(ELv, NLv, ap, k1=k1, k2=k2)
+    matrixv = s2d.assemble_global_stiffness_matrix(NLv, ELv, p, m, elem_matricesv, ap)
+    matrixv, f_loadv = f2e.apply_boundary_conditions(matrixv, f_loadv, p, m, NLv, ug, ap)
+    uv = np.linalg.solve(matrixv, f_loadv)
+    g2d.plot_2d_solution(uv, NLv, ELv)
+    print("Координати вузлів:\n", NLv)
+    print("Елементи:\n", ELv)
+    print(f_loadv)
+    print(matrixv)
+    print(uv)
+    g2d.plot_2d_solution2(uv, NLv, ELv, exact_solution=exact_solution)
+    g2d.plot_2d_solution_exact(exact_solution, NLv)
 
     # g2d.plot_2d_solution_difference(uv, NLv, exact_solution)
 

@@ -3,7 +3,7 @@ import sympy as sp
 import mesh_2d as m2d
 import base_functions_2d as b2f
 from scipy.spatial import distance
-from numpy.polynomial.legendre import leggauss
+
 
 def set_up_vector_point_sources(sources, strengths, nodes, p, m, ap):
     f_vec = np.zeros((ap * p + 1) * (ap * m + 1))
@@ -163,34 +163,6 @@ def compute_element_stiffness(elements, nodes, ap, k1, k2):
                 K_local[i, j] = float(integral_value)
 
         element_matrices.append(K_local)
-
-    return element_matrices
-
-def compute_element_mass(elements, nodes, ap):
-
-    dN_dksi_list, dN_deta_list = compute_partial_derivatives(ap)
-    num_nodes = 4 if ap == 1 else (9 if ap == 2 else 16)
-    nq = ap + 1
-    gauss_points, gauss_weights = leggauss(nq)
-    element_matrices = []
-
-    for noe in elements:
-        x_coords = [nodes[i][0] for i in noe]
-        y_coords = [nodes[i][1] for i in noe]
-        M_local = np.zeros((num_nodes, num_nodes))
-
-        for i in range(num_nodes):
-            for j in range(num_nodes):
-                integral = 0.0
-                for ξ, wξ in zip(gauss_points, gauss_weights):
-                    for η, wη in zip(gauss_points, gauss_weights):
-                        J = compute_jacobian(ξ, η, x_coords, y_coords, dN_dksi_list, dN_deta_list)
-                        detJ = np.linalg.det(J)
-                        N_i = b2f.N(i, ξ, η, ap)
-                        N_j = b2f.N(j, ξ, η, ap)
-                        integral += N_i * N_j * detJ * wξ * wη
-                M_local[i, j] = integral
-        element_matrices.append(M_local)
 
     return element_matrices
 
