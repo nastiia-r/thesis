@@ -246,7 +246,68 @@ def compute_element_mass_matrix(elements, nodes, ap):
 
     return element_mass_matrices
 
+def compute_element_reaction_matrix(elements, nodes, ap, beta):
+    """
+    Обчислює локальні матриці реакції для всіх елементів.
+    R_ij = інтеграл(beta(x,y) * N_i * N_j * det(J))
+    """
+    element_reaction_matrices = []
+    dN_dksi_list, dN_deta_list = compute_partial_derivatives(ap)
 
+    # Точки і ваги Гаусса
+    if ap == 1:
+        gauss_points = [-1 / np.sqrt(3), 1 / np.sqrt(3)]
+        gauss_weights = [1.0, 1.0]
+    elif ap == 2:
+        gauss_points = [-np.sqrt(3 / 5), 0, np.sqrt(3 / 5)]
+        gauss_weights = [5 / 9, 8 / 9, 5 / 9]
+    elif ap == 3:
+        gauss_points = [
+            -np.sqrt((3 + 2 * np.sqrt(6 / 5)) / 7),
+            -np.sqrt((3 - 2 * np.sqrt(6 / 5)) / 7),
+             np.sqrt((3 - 2 * np.sqrt(6 / 5)) / 7),
+             np.sqrt((3 + 2 * np.sqrt(6 / 5)) / 7),
+        ]
+        gauss_weights = [
+            (18 - np.sqrt(30)) / 36,
+            (18 + np.sqrt(30)) / 36,
+            (18 + np.sqrt(30)) / 36,
+            (18 - np.sqrt(30)) / 36,
+        ]
+
+    for noe in elements:
+        x_coords = [nodes[i][0] for i in noe]
+        y_coords = [nodes[i][1] for i in noe]
+
+        R_local = np.zeros((len(noe), len(noe)))
+
+        for i in range(len(noe)):
+            for j in range(len(noe)):
+                integral_value = 0.0
+
+                for ksi_idx, ksi_point in enumerate(gauss_points):
+                    for eta_idx, eta_point in enumerate(gauss_points):
+                        J = compute_jacobian(ksi_point, eta_point, x_coords, y_coords, dN_dksi_list, dN_deta_list)
+                        detJ = np.abs(np.linalg.det(J))
+
+                        N_i = b2f.N(i, ksi_point, eta_point, ap)
+                        N_j = b2f.N(j, ksi_point, eta_point, ap)
+
+                        # Знаходимо глобальні координати точки Гаусса (щоб передати у функцію beta)
+                        x_gp = sum(x_coords[n] * b2f.N(n, ksi_point, eta_point, ap) for n in range(len(noe)))
+                        y_gp = sum(y_coords[n] * b2f.N(n, ksi_point, eta_point, ap) for n in range(len(noe)))
+                        
+                        beta_val = beta(x_gp, y_gp)
+
+                        # Інтегруємо: beta * N_i * N_j * |J| * w_ksi * w_eta
+                        integrand = beta_val * N_i * N_j * detJ
+                        integral_value += integrand * gauss_weights[ksi_idx] * gauss_weights[eta_idx]
+
+                R_local[i, j] = integral_value
+                
+        element_reaction_matrices.append(R_local)
+
+    return element_reaction_matrices
 
 def crank_nicolson(K, M, f, u0, dt, num_steps):
     u = u0.copy()

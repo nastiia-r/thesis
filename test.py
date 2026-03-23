@@ -133,7 +133,7 @@ def main():
     verticest6 = [(0, 0), (1, 0), (1, 1), (0, 1)]
     verticesv = [(0, 0), (1, 0), (1, 1), (0, 1)]
 
-    ap = 3
+    ap = 1
 
     ug = [
         [f2e.TypeOfBoundCond.DIRICHLET, ug_3],  # нижнє (y = 0)
