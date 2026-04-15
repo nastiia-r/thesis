@@ -6,6 +6,86 @@ import finite_element_2d as f2e
 import graph2d as g2d
 
 
+
+# # test1
+# def ft1(x, y, A=100, x0=0.5, y0=0.5, const=0.1):
+#     return A * np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / const)
+
+
+# def ft2(x, y, A=100, x0=0.5, y0=0.5, const=1):
+#     return A * np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / const)
+
+
+# test2
+# sourcest3 = [(0.5, 0.5)]
+# strengthst3 = [100]
+
+# sourcest4 = [(0.5, 0.5), (0.2, 0.8)]
+# strengthst4 = [100, 50]
+
+# atol = 0.05
+
+
+# def ft3(x, y): return sum(
+#     s for (x0, y0), s in zip(sourcest3, strengthst3)
+#     if np.isclose(x, x0, atol=atol) and np.isclose(y, y0, atol=atol)
+# )
+
+
+# def ft4(x, y): return sum(
+#     s for (x0, y0), s in zip(sourcest4, strengthst4)
+#     if np.isclose(x, x0, atol=atol) and np.isclose(y, y0, atol=atol)
+# )
+
+
+# test3
+# def k1t5(x, y):
+#     return 0.1 if 0.45 < x < 1.55 else 10.0
+
+
+# def k2t5(x, y):
+#     return 1.0
+
+
+# def ft5(x, y):
+#     return 100 * np.exp(-((x - 0.5) ** 2 + (y - 0.5) ** 2) / 0.001)
+
+
+# def k1t6(x, y):
+#     if 0.45 < x < 1.55:
+#         return 0.05
+#     return 1.0
+
+
+# def k2t6(x, y):
+#     if 0.65 < y < 1.75:
+#         return 0.01
+#     return 1.0
+
+
+# def ft6(x, y):
+#     if x < 0.3 and y < 0.3:
+#         return 20
+#     elif x > 0.7 and y > 0.7:
+#         return 5
+#     else:
+#         return 0
+
+
+# ver
+# def fv(x, y):
+#     return 2 * np.pi**2 * np.sin(np.pi * x) * np.sin(np.pi * y)
+# def fv(x, y):
+#     return 2 * sp.pi ** 2 * sp.sin(sp.pi * x) * sp.sin(sp.pi * y)
+
+# Нове f для реакції-дифузії з beta = const
+# du/dt - Δu - beta*u = f
+# => f = (-1 + 2π² - beta) * e^{-t} * sin(πx) * sin(πy)
+
+# def exact_solution(x, y):
+#     return np.sin(np.pi * x) * np.sin(np.pi * y)
+
+
 def ug_1(x, y):
     return 0
     # return y**2
@@ -39,101 +119,31 @@ def k1(x, y):
 def k2(x, y):
     return 1
 
+def beta(x, y):
+    return 0.5
 
-# test1
-def ft1(x, y, A=100, x0=0.5, y0=0.5, const=0.1):
-    return A * np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / const)
-
-
-def ft2(x, y, A=100, x0=0.5, y0=0.5, const=1):
-    return A * np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / const)
-
-
-# test2
-sourcest3 = [(0.5, 0.5)]
-strengthst3 = [100]
-
-sourcest4 = [(0.5, 0.5), (0.2, 0.8)]
-strengthst4 = [100, 50]
-
-atol = 0.05
-
-
-def ft3(x, y): return sum(
-    s for (x0, y0), s in zip(sourcest3, strengthst3)
-    if np.isclose(x, x0, atol=atol) and np.isclose(y, y0, atol=atol)
-)
-
-
-def ft4(x, y): return sum(
-    s for (x0, y0), s in zip(sourcest4, strengthst4)
-    if np.isclose(x, x0, atol=atol) and np.isclose(y, y0, atol=atol)
-)
-
-
-# test3
-def k1t5(x, y):
-    return 0.1 if 0.45 < x < 1.55 else 10.0
-
-
-def k2t5(x, y):
-    return 1.0
-
-
-def ft5(x, y):
-    return 100 * np.exp(-((x - 0.5) ** 2 + (y - 0.5) ** 2) / 0.001)
-
-
-def k1t6(x, y):
-    if 0.45 < x < 1.55:
-        return 0.05
-    return 1.0
-
-
-def k2t6(x, y):
-    if 0.65 < y < 1.75:
-        return 0.01
-    return 1.0
-
-
-def ft6(x, y):
-    if x < 0.3 and y < 0.3:
-        return 20
-    elif x > 0.7 and y > 0.7:
-        return 5
-    else:
-        return 0
-
-
-# ver
-# def fv(x, y):
-#     return 2 * np.pi**2 * np.sin(np.pi * x) * np.sin(np.pi * y)
-def fv(x, y):
-    return 2 * sp.pi ** 2 * sp.sin(sp.pi * x) * sp.sin(sp.pi * y)
-
-
-def exact_solution(x, y):
-    return np.sin(np.pi * x) * np.sin(np.pi * y)
-
-def exact_solution_t(x, y, t):
-    """Точний аналітичний розв'язок, що залежить від часу"""
-    return np.exp(-t) * np.sin(np.pi * x) * np.sin(np.pi * y)
+def fv_space_reaction(x, y, beta_val=0.5):
+    return (2 * np.pi**2 - 1 + beta_val) * np.sin(np.pi * x) * np.sin(np.pi * y)
 
 def fv_space(x, y):
     """Просторова (базова) частина функції джерела"""
     return (2 * np.pi**2 - 1) * np.sin(np.pi * x) * np.sin(np.pi * y)
 
+def exact_solution_t(x, y, t):
+    """Точний аналітичний розв'язок, що залежить від часу"""
+    return np.exp(-t) * np.sin(np.pi * x) * np.sin(np.pi * y)
+
 
 def main():
-    verticest1 = [(0, 0), (1.5, 0), (1, 1), (0, 0.75)]
-    verticest2 = [(0, 0), (1.5, 0), (1, 1), (0, 0.75)]
-    verticest3 = [(0, 0), (1, 0), (1.1, 1), (0, 0.9)]
-    verticest4 = [(0, 0), (1, 0), (1.1, 1), (0, 0.9)]
-    verticest5 = [(0, 0), (1.5, 0), (1, 1), (0, 0.75)]
-    verticest6 = [(0, 0), (1, 0), (1, 1), (0, 1)]
+    # verticest1 = [(0, 0), (1.5, 0), (1, 1), (0, 0.75)]
+    # verticest2 = [(0, 0), (1.5, 0), (1, 1), (0, 0.75)]
+    # verticest3 = [(0, 0), (1, 0), (1.1, 1), (0, 0.9)]
+    # verticest4 = [(0, 0), (1, 0), (1.1, 1), (0, 0.9)]
+    # verticest5 = [(0, 0), (1.5, 0), (1, 1), (0, 0.75)]
+    # verticest6 = [(0, 0), (1, 0), (1, 1), (0, 1)]
     verticesv = [(0, 0), (1, 0), (1, 1), (0, 1)]
 
-    ap = 1
+    ap = 3
 
     ug = [
         [f2e.TypeOfBoundCond.DIRICHLET, ug_3],  # нижнє (y = 0)
@@ -153,19 +163,29 @@ def main():
     # 1. Обчислюємо локальні матриці
     elem_stiffness = s2d.compute_element_stiffness(ELv, NLv, ap, k1=k1, k2=k2)
     elem_mass = s2d.compute_element_mass_matrix(ELv, NLv, ap) 
-    
+    # 2. Обчислити матрицю реакції
+    elem_reaction = s2d.compute_element_reaction_matrix(ELv, NLv, ap, beta)
+    R = s2d.assemble_global_matrix(NLv, ELv, p, m, elem_reaction, ap)
     # 2. Збираємо глобальні матриці
     K = s2d.assemble_global_matrix(NLv, ELv, p, m, elem_stiffness, ap)
     M = s2d.assemble_global_matrix(NLv, ELv, p, m, elem_mass, ap)
+
+    # 3. Замінити K на (K + R) скрізь у схемі Кранка–Ніколсона
+    KR = K + R
     
     # 3. Налаштування часу
     dt = 0.01          
     t_end = 1.0        
     num_steps = int(t_end / dt)
     theta = 0.5        # Кранк-Ніколсон
+
+    save_every = 5   # зберігати кожен 5-й крок
+    U_history = []
+    time_history = []
+
     
     # 4. Формуємо ліву матрицю A
-    A_matrix = M + theta * dt * K
+    A_matrix = M + theta * dt * KR
     A_matrix = f2e.apply_boundary_conditions_matrix(A_matrix, p, m, ug, ap)
     
     # 5. Початкові умови U^0 при t = 0
@@ -173,11 +193,12 @@ def main():
     num_total_nodes = (ap * p + 1) * (ap * m + 1)
     U_n = np.zeros(num_total_nodes)
     for i, (x_val, y_val) in enumerate(NLv):
-        U_n[i] = exact_solution_t(x_val, y_val, 0.0) 
+        U_n[i] = exact_solution_t(x_val, y_val, 0)
     
     print("Обчислення просторового вектора навантаження...")
+    F_base = np.zeros(num_total_nodes)
     # Обчислюємо інтеграли Гаусса ТІЛЬКИ ОДИН РАЗ для просторової частини
-    F_base = s2d.set_up_vector(fv_space, NLv, ELv, p, m, ap)
+    F_base = s2d.set_up_vector(fv_space_reaction, NLv, ELv, p, m, ap)
     
     print("Починаємо інтегрування по часу...")
     current_t = 0.0
@@ -190,7 +211,7 @@ def main():
         F_n_plus_1 = F_base * np.exp(-t_n_plus_1)
         
         # Права частина
-        right_matrix = M - (1 - theta) * dt * K
+        right_matrix = M - (1 - theta) * dt * KR
         b_vector = right_matrix @ U_n + dt * (theta * F_n_plus_1 + (1 - theta) * F_n)
         
         # Граничні умови
@@ -199,6 +220,9 @@ def main():
         # Розв'язок
         U_next = np.linalg.solve(A_matrix, b_vector)
         U_n = U_next
+        if (step + 1) % save_every == 0:
+            U_history.append(U_n.copy())
+            time_history.append(current_t)
         
         current_t += dt
         
@@ -210,9 +234,19 @@ def main():
     # 6. ВЕРИФІКАЦІЯ
     # Створюємо лямбда-функцію, яка фіксує кінцевий час t_end для передачі у твою функцію малювання
     exact_final = lambda x, y: exact_solution_t(x, y, t_end)
-    
+
     print("\nАналіз похибки в кінцевий момент часу:")
     g2d.plot_2d_solution2(U_n, NLv, ELv, exact_solution=exact_final)
+    g2d.animate_solution(U_history, time_history, NLv, 
+                    title="Реакція-дифузія", save_filename=f"reaction_diffusion_dt_{dt}.gif")
+
+    err_L2, seminorm_H1, err_W12 = g2d.compute_H1_error(
+    exact_final, U_n, NLv, ELv, ap)
+    print(f"\n--- Похибки в кінцевий момент t = {t_end} ---")
+    print(f"  L2-норма:        {err_L2:.4e}")
+    print(f"  H1-семінорма:    {seminorm_H1:.4e}")
+    print(f"  W_2^1 (H1)-норма: {err_W12:.4e}")
+
     
     # test1
     # NLt1, ELt1 = m2d.uniform_mesh_with_vertices(verticest1, p, m, element_type, ap)

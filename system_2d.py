@@ -3,7 +3,7 @@ import sympy as sp
 import mesh_2d as m2d
 import base_functions_2d as b2f
 from scipy.spatial import distance
-
+#system_2d
 
 def set_up_vector_point_sources(sources, strengths, nodes, p, m, ap):
     f_vec = np.zeros((ap * p + 1) * (ap * m + 1))
@@ -75,7 +75,7 @@ def set_up_vector(f, nodes, elements, p, m, ap):
                 for eta_idx, eta_point in enumerate(gauss_points):
                     x_val, y_val = m2d.isoparametric_transform(ksi_point, eta_point, x_coords, y_coords, ap)
                     J = compute_jacobian(ksi_point, eta_point, x_coords, y_coords, dN_dksi_list, dN_deta_list)
-                    detJ = np.linalg.det(J)
+                    detJ = np.abs(np.linalg.det(J))
                     f_val = f(x_val, y_val)
                     N_i = b2f.N(i, ksi_point, eta_point, ap)
 

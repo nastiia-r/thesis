@@ -1,5 +1,5 @@
 from enum import Enum
-
+#finite_element_2d
 
 def apply_boundary_conditions_matrix(matrix, p, m, ug, ap=1):
     """Модифікує лише глобальну матрицю для умов Діріхле (до циклу по часу)."""

@@ -3,9 +3,87 @@ import matplotlib.pyplot as plt
 import base_functions_2d as b2f
 import finite_element_2d as f2e
 import mesh_2d as m2d
+import system_2d as s2d
+import matplotlib.animation as animation
 from scipy.interpolate import griddata
 
+def animate_solution(U_history, time_points, NL, title="Реакція-дифузія",
+                     interval=120, exact_fn=None, save_filename=None):
+    x = NL[:, 0]
+    y = NL[:, 1]
 
+    x_lin = np.linspace(0, 1, 80)
+    y_lin = np.linspace(0, 1, 80)
+    X, Y = np.meshgrid(x_lin, y_lin)
+
+    all_vals = np.concatenate(U_history)
+    vmin, vmax = np.min(all_vals), np.max(all_vals)
+
+    fig = plt.figure(figsize=(14, 6))
+    fig.patch.set_facecolor('#0f0f1a')
+
+    ax3d = fig.add_subplot(121, projection='3d')
+    ax2d = fig.add_subplot(122)
+    ax2d.set_facecolor('#0f0f1a')
+
+    # ── Створюємо colorbar ОДИН РАЗ через ScalarMappable ──
+    from matplotlib.cm import ScalarMappable
+    from matplotlib.colors import Normalize
+    sm = ScalarMappable(cmap='inferno', norm=Normalize(vmin=vmin, vmax=vmax))
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax2d, fraction=0.046, pad=0.04)
+    cbar.ax.yaxis.set_tick_params(color='white')
+    plt.setp(cbar.ax.yaxis.get_ticklabels(), color='white')
+    cbar.set_label('u(x,y,t)', color='white')
+
+    def draw_frame(frame):
+        ax3d.clear()
+        ax2d.clear()
+        ax2d.set_facecolor('#0f0f1a')
+
+        Z = griddata((x, y), U_history[frame], (X, Y), method='linear')
+        t_val = time_points[frame]
+
+        # ── 3D surface ──────────────────────────────────────
+        ax3d.plot_surface(X, Y, Z, cmap='inferno', vmin=vmin, vmax=vmax,
+                          edgecolor='none', alpha=0.95)
+        ax3d.set_zlim(vmin - 0.05, vmax + 0.05)
+        ax3d.set_xlabel('x', color='white', labelpad=6)
+        ax3d.set_ylabel('y', color='white', labelpad=6)
+        ax3d.set_zlabel('u', color='white', labelpad=6)
+        ax3d.tick_params(colors='white')
+        ax3d.set_facecolor('#0f0f1a')
+        ax3d.xaxis.pane.fill = False
+        ax3d.yaxis.pane.fill = False
+        ax3d.zaxis.pane.fill = False
+        ax3d.set_title(f'{title}\nt = {t_val:.3f}', color='white', fontsize=11)
+
+        # ── 2D heatmap + ізолінії ────────────────────────────
+        ax2d.contourf(X, Y, Z, levels=40, cmap='inferno', vmin=vmin, vmax=vmax)
+        ax2d.contour(X, Y, Z, levels=10, colors='white',
+                     linewidths=0.4, alpha=0.5)
+        ax2d.set_xlabel('x', color='white')
+        ax2d.set_ylabel('y', color='white')
+        ax2d.tick_params(colors='white')
+        ax2d.set_title('Теплова карта', color='white', fontsize=11)
+
+        fig.suptitle(f'Розповсюдження: t = {t_val:.3f}', color='white',
+                     fontsize=13, fontweight='bold')
+
+    draw_frame(0)
+    fig.tight_layout()   # викликаємо ОДИН РАЗ після першого кадру
+
+    ani = animation.FuncAnimation(fig, draw_frame, frames=len(U_history),
+                                   interval=interval, blit=False)
+    if save_filename:
+        print(f"Збереження анімації у файл {save_filename} (це може зайняти хвилину)...")
+        # pillow - це стандартний writer для створення gif
+        ani.save(save_filename, writer='pillow', fps=1000//interval)
+        print(f"Успішно збережено: {save_filename}")
+    else:
+        plt.show()
+    return ani
+    
 def plot_statistics(start, end, statistics, u_exact, n_points=100):
     abscissas = np.linspace(0, 1, n_points)
     xs = [(1 - t) * start[0] + t * end[0] for t in abscissas]
@@ -97,7 +175,7 @@ def plot_2d_solution(u, NL, EL, exact_solution=None):
 
 def calculate_L2_error(u_exact, u_values, nodes, elements, base, degree):
     from numpy.polynomial.legendre import leggauss
-    dN_dksi_list, dN_deta_list = f2e.compute_partial_derivatives(degree)
+    dN_dksi_list, dN_deta_list = s2d.compute_partial_derivatives(degree)
     nq = degree + 1
     quad_points, quad_weights = leggauss(nq)
 
@@ -123,6 +201,87 @@ def calculate_L2_error(u_exact, u_values, nodes, elements, base, degree):
                                              [coord[1] for coord in element_coords], dN_dksi_list, dN_deta_list)
                 error_squared += (u_ex_val - u_h_val) ** 2 * w * J_val
     return np.sqrt(error_squared)
+
+def compute_H1_error(u_exact, u_values, nodes, elements, ap):
+
+
+    # Точки і ваги Гаусса (як скрізь у коді)
+    if ap == 1:
+        gauss_points = [-1 / np.sqrt(3), 1 / np.sqrt(3)]
+        gauss_weights = [1.0, 1.0]
+    elif ap == 2:
+        gauss_points = [-np.sqrt(3/5), 0, np.sqrt(3/5)]
+        gauss_weights = [5/9, 8/9, 5/9]
+    elif ap == 3:
+        gauss_points = [
+            -np.sqrt((3 + 2*np.sqrt(6/5)) / 7),
+            -np.sqrt((3 - 2*np.sqrt(6/5)) / 7),
+             np.sqrt((3 - 2*np.sqrt(6/5)) / 7),
+             np.sqrt((3 + 2*np.sqrt(6/5)) / 7),
+        ]
+        gauss_weights = [
+            (18 - np.sqrt(30)) / 36,
+            (18 + np.sqrt(30)) / 36,
+            (18 + np.sqrt(30)) / 36,
+            (18 - np.sqrt(30)) / 36,
+        ]
+
+
+    dN_dksi_list, dN_deta_list = s2d.compute_partial_derivatives(ap)
+
+    err2_L2  = 0.0
+    err2_H1  = 0.0   # семінорма |u|_H1
+
+    for noe in elements:
+        x_coords = [nodes[i][0] for i in noe]
+        y_coords = [nodes[i][1] for i in noe]
+        u_local  = [u_values[i] for i in noe]
+        n = len(noe)
+
+        for ki, ksi in enumerate(gauss_points):
+            for ei, eta in enumerate(gauss_points):
+                w = gauss_weights[ki] * gauss_weights[ei]
+
+                # Координати точки Гаусса
+                x_gp = sum(b2f.N(k, ksi, eta, ap) * x_coords[k] for k in range(n))
+                y_gp = sum(b2f.N(k, ksi, eta, ap) * y_coords[k] for k in range(n))
+
+                # FEM-розв'язок та точний
+                u_h  = sum(u_local[k] * b2f.N(k, ksi, eta, ap) for k in range(n))
+                u_ex = u_exact(x_gp, y_gp)
+
+                # Якобіан
+                J    = s2d.compute_jacobian(ksi, eta, x_coords, y_coords,
+                                            dN_dksi_list, dN_deta_list)
+                detJ = abs(np.linalg.det(J))
+                J_inv = np.linalg.inv(J)
+
+                # L2 складова
+                err2_L2 += (u_ex - u_h)**2 * detJ * w
+
+                # Градієнт u_h в глобальних координатах
+                grad_u_h = np.zeros(2)
+                for k in range(n):
+                    dN_ref = np.array([dN_dksi_list[k](ksi, eta),
+                                       dN_deta_list[k](ksi, eta)])
+                    grad_N = J_inv @ dN_ref
+                    grad_u_h += u_local[k] * grad_N
+
+                # Градієнт точного розв'язку (числово через малий крок)
+                eps = 1e-7
+                du_dx = (u_exact(x_gp + eps, y_gp) - u_exact(x_gp - eps, y_gp)) / (2*eps)
+                du_dy = (u_exact(x_gp, y_gp + eps) - u_exact(x_gp, y_gp - eps)) / (2*eps)
+                grad_u_ex = np.array([du_dx, du_dy])
+
+                # H1 семінорма
+                grad_err = grad_u_ex - grad_u_h
+                err2_H1 += np.dot(grad_err, grad_err) * detJ * w
+
+    err_L2  = np.sqrt(max(err2_L2, 0.0))
+    err_H1  = np.sqrt(max(err2_H1, 0.0))          # семінорма
+    err_W12 = np.sqrt(max(err2_L2 + err2_H1, 0.0)) # повна H1-норма
+
+    return err_L2, err_H1, err_W12
 
 
 def plot_2d_solution2(u, NL, EL, exact_solution=None):
