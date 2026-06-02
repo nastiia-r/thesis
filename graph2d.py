@@ -26,7 +26,6 @@ def animate_solution(U_history, time_points, NL, title="Реакція-дифу�
     ax2d = fig.add_subplot(122)
     ax2d.set_facecolor('#0f0f1a')
 
-    # ── Створюємо colorbar ОДИН РАЗ через ScalarMappable ──
     from matplotlib.cm import ScalarMappable
     from matplotlib.colors import Normalize
     sm = ScalarMappable(cmap='inferno', norm=Normalize(vmin=vmin, vmax=vmax))
@@ -44,7 +43,6 @@ def animate_solution(U_history, time_points, NL, title="Реакція-дифу�
         Z = griddata((x, y), U_history[frame], (X, Y), method='linear')
         t_val = time_points[frame]
 
-        # ── 3D surface ──────────────────────────────────────
         ax3d.plot_surface(X, Y, Z, cmap='inferno', vmin=vmin, vmax=vmax,
                           edgecolor='none', alpha=0.95)
         ax3d.set_zlim(vmin - 0.05, vmax + 0.05)
@@ -58,7 +56,6 @@ def animate_solution(U_history, time_points, NL, title="Реакція-дифу�
         ax3d.zaxis.pane.fill = False
         ax3d.set_title(f'{title}\nt = {t_val:.3f}', color='white', fontsize=11)
 
-        # ── 2D heatmap + ізолінії ────────────────────────────
         ax2d.contourf(X, Y, Z, levels=40, cmap='inferno', vmin=vmin, vmax=vmax)
         ax2d.contour(X, Y, Z, levels=10, colors='white',
                      linewidths=0.4, alpha=0.5)
@@ -71,13 +68,12 @@ def animate_solution(U_history, time_points, NL, title="Реакція-дифу�
                      fontsize=13, fontweight='bold')
 
     draw_frame(0)
-    fig.tight_layout()   # викликаємо ОДИН РАЗ після першого кадру
+    fig.tight_layout()
 
     ani = animation.FuncAnimation(fig, draw_frame, frames=len(U_history),
                                    interval=interval, blit=False)
     if save_filename:
         print(f"Збереження анімації у файл {save_filename} (це може зайняти хвилину)...")
-        # pillow - це стандартний writer для створення gif
         ani.save(save_filename, writer='pillow', fps=1000//interval)
         print(f"Успішно збережено: {save_filename}")
     else:
@@ -136,35 +132,29 @@ def interpolate_solution(x, y, u, NL, EL, ap):
                 u_val = sum(u_local[i] * b2f.N(i, ksi, eta, ap) for i in range(num_nodes))
                 return u_val
 
-    return 0  # якщо точка не належить жодному елементу
+    return 0
 
 
 def plot_2d_solution(u, NL, EL, exact_solution=None):
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection='3d')
 
-    # Координати вузлів
     x = NL[:, 0]
     y = NL[:, 1]
     z = u
 
-    # Створення регулярної прямокутної сітки
     x_lin = np.linspace(np.min(x), np.max(x), 100)
     y_lin = np.linspace(np.min(y), np.max(y), 100)
     X, Y = np.meshgrid(x_lin, y_lin)
 
-    # Інтерполяція значень u для регулярної сітки
     Z = griddata((x, y), z, (X, Y), method='linear')
 
-    # Побудова поверхні
     surface = ax.plot_surface(X, Y, Z, cmap='viridis', alpha=0.8, edgecolor='none', label='Наближений розв\'язок')
 
-    # Якщо заданий точний розв'язок
     if exact_solution:
         Z_exact = exact_solution(X, Y)
         ax.plot_surface(X, Y, Z_exact, cmap='plasma', alpha=0.4, label='Точний розв\'язок')
 
-    # Налаштування графіка
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('u(x, y)')
@@ -205,7 +195,6 @@ def calculate_L2_error(u_exact, u_values, nodes, elements, base, degree):
 def compute_H1_error(u_exact, u_values, nodes, elements, ap):
 
 
-    # Точки і ваги Гаусса (як скрізь у коді)
     if ap == 1:
         gauss_points = [-1 / np.sqrt(3), 1 / np.sqrt(3)]
         gauss_weights = [1.0, 1.0]
@@ -230,7 +219,7 @@ def compute_H1_error(u_exact, u_values, nodes, elements, ap):
     dN_dksi_list, dN_deta_list = s2d.compute_partial_derivatives(ap)
 
     err2_L2  = 0.0
-    err2_H1  = 0.0   # семінорма |u|_H1
+    err2_H1  = 0.0
 
     for noe in elements:
         x_coords = [nodes[i][0] for i in noe]
@@ -242,24 +231,19 @@ def compute_H1_error(u_exact, u_values, nodes, elements, ap):
             for ei, eta in enumerate(gauss_points):
                 w = gauss_weights[ki] * gauss_weights[ei]
 
-                # Координати точки Гаусса
                 x_gp = sum(b2f.N(k, ksi, eta, ap) * x_coords[k] for k in range(n))
                 y_gp = sum(b2f.N(k, ksi, eta, ap) * y_coords[k] for k in range(n))
 
-                # FEM-розв'язок та точний
                 u_h  = sum(u_local[k] * b2f.N(k, ksi, eta, ap) for k in range(n))
                 u_ex = u_exact(x_gp, y_gp)
 
-                # Якобіан
                 J    = s2d.compute_jacobian(ksi, eta, x_coords, y_coords,
                                             dN_dksi_list, dN_deta_list)
                 detJ = abs(np.linalg.det(J))
                 J_inv = np.linalg.inv(J)
 
-                # L2 складова
                 err2_L2 += (u_ex - u_h)**2 * detJ * w
 
-                # Градієнт u_h в глобальних координатах
                 grad_u_h = np.zeros(2)
                 for k in range(n):
                     dN_ref = np.array([dN_dksi_list[k](ksi, eta),
@@ -267,19 +251,17 @@ def compute_H1_error(u_exact, u_values, nodes, elements, ap):
                     grad_N = J_inv @ dN_ref
                     grad_u_h += u_local[k] * grad_N
 
-                # Градієнт точного розв'язку (числово через малий крок)
                 eps = 1e-7
                 du_dx = (u_exact(x_gp + eps, y_gp) - u_exact(x_gp - eps, y_gp)) / (2*eps)
                 du_dy = (u_exact(x_gp, y_gp + eps) - u_exact(x_gp, y_gp - eps)) / (2*eps)
                 grad_u_ex = np.array([du_dx, du_dy])
 
-                # H1 семінорма
                 grad_err = grad_u_ex - grad_u_h
                 err2_H1 += np.dot(grad_err, grad_err) * detJ * w
 
     err_L2  = np.sqrt(max(err2_L2, 0.0))
-    err_H1  = np.sqrt(max(err2_H1, 0.0))          # семінорма
-    err_W12 = np.sqrt(max(err2_L2 + err2_H1, 0.0)) # повна H1-норма
+    err_H1  = np.sqrt(max(err2_H1, 0.0))
+    err_W12 = np.sqrt(max(err2_L2 + err2_H1, 0.0))
 
     return err_L2, err_H1, err_W12
 
@@ -322,7 +304,6 @@ def plot_2d_solution2(u, NL, EL, exact_solution=None):
     ax.set_zlabel('u(x, y)')
     ax.set_title('Наближене vs Точне розв\'язання')
 
-    # Додати кольорову шкалу
     plt.colorbar(surface, ax=ax, shrink=0.5, aspect=10)
     plt.show()
 
@@ -377,3 +358,51 @@ def plot_2d_solution_difference(u, NL, exact_solution=None):
 
     plt.colorbar(surface, ax=ax, shrink=0.5, aspect=10)
     plt.show()
+
+
+def generate_static_plots(U_history, time_history, NL, times_to_save, prefix="exp", title="Еволюція"):
+    """
+    Автоматично знаходить потрібні моменти часу в історії та зберігає їх як PNG.
+    """
+    import os
+    x = NL[:, 0]
+    y = NL[:, 1]
+    x_lin = np.linspace(np.min(x), np.max(x), 100)
+    y_lin = np.linspace(np.min(y), np.max(y), 100)
+    X, Y = np.meshgrid(x_lin, y_lin)
+
+    all_vals = np.concatenate(U_history)
+    vmin, vmax = np.min(all_vals), np.max(all_vals)
+
+    print(f"\n--- Генерація статичних фігур для: {title} ---")
+    
+    for target_t in times_to_save:
+        idx = np.argmin(np.abs(np.array(time_history) - target_t))
+        real_t = time_history[idx]
+        U_n = U_history[idx]
+        
+        fig = plt.figure(figsize=(9, 7))
+        ax = fig.add_subplot(111, projection='3d')
+
+        Z = griddata((x, y), U_n, (X, Y), method='linear')
+        surface = ax.plot_surface(X, Y, Z, cmap='viridis', 
+                                edgecolor='none', alpha=0.9, vmin=vmin, vmax=vmax)
+        
+        ax.set_zlim(vmin - 0.05, vmax + 0.05)
+        ax.set_xlabel('Координата x', labelpad=10)
+        ax.set_ylabel('Координата y', labelpad=10)
+        ax.set_zlabel('Концентрація u(x,y,t)', labelpad=10)
+        ax.set_title(f"{title}\nt = {real_t:.1f}", fontsize=14, pad=20)
+        
+        ax.xaxis.pane.fill = False
+        ax.yaxis.pane.fill = False
+        ax.zaxis.pane.fill = False
+        
+        plt.colorbar(surface, ax=ax, shrink=0.6, aspect=15, pad=0.1)
+        
+        safe_t_str = f"{target_t:.1f}".replace('.', '_')
+        filename = f"{prefix}_t{safe_t_str}.png"
+        
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+        plt.close(fig)
+        print(f"  Збережено: {filename}")

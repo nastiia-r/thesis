@@ -50,7 +50,7 @@ def run_verification(ap, p=10, m=10, dt=0.01, t_end=1.0, save_every=5,
     M = s2d.assemble_global_matrix(NL, EL, p, m, M_loc, ap)
     R = s2d.assemble_global_matrix(NL, EL, p, m, R_loc, ap)
 
-    KR = K + R   # просторовий оператор реакції-дифузії
+    KR = K + R
 
     theta     = 0.5
     num_steps = int(round(t_end / dt))
@@ -64,11 +64,11 @@ def run_verification(ap, p=10, m=10, dt=0.01, t_end=1.0, save_every=5,
     U_n = np.array([exact(x, y, 0.0) for x, y in NL])
 
     print(f"  Інтегрування: {num_steps} кроків...")
-    U_history   = [U_n.copy()]   # зберігаємо t=0
+    U_history   = [U_n.copy()]
     time_history = [0.0]
     current_t    = 0.0
 
-    right_M = M - (1 - theta) * dt * KR   # права матриця (незмінна)
+    right_M = M - (1 - theta) * dt * KR
 
     for step in range(num_steps):
         t_n       = current_t
@@ -128,7 +128,6 @@ def print_summary(results):
         print(f"║  {r['ap']}   ║  {r['L2']:.4e}  ║  {r['H1semi']:.4e}  ║  {r['W12']:.4e}  ║")
     print("╚══════╩══════════════╩══════════════╩══════════════╝")
 
-    # Збіжність H¹-семінорми
     if len(results) >= 2:
         print("\n  Зниження H¹-семінорми:")
         for i in range(1, len(results)):

@@ -1,5 +1,4 @@
 from enum import Enum
-#finite_element_2d
 
 def apply_boundary_conditions_matrix(matrix, p, m, ug, ap=1):
     """Модифікує лише глобальну матрицю для умов Діріхле (до циклу по часу)."""
@@ -9,9 +8,7 @@ def apply_boundary_conditions_matrix(matrix, p, m, ug, ap=1):
     for i in range(n):
         if ug[i][0] == TypeOfBoundCond.DIRICHLET:
             for index in bounds[i][1]:
-                # Занулюємо рядок
                 matrix[index, :] = 0.0
-                # Ставимо 1 на діагональ
                 matrix[index, index] = 1.0
     return matrix
 
@@ -22,15 +19,12 @@ def apply_boundary_conditions_vector(f_load, p, m, nodes, ug, ap=1, current_time
     for i in range(n):
         if ug[i][0] == TypeOfBoundCond.DIRICHLET:
             for index in bounds[i][1]:
-                # Встановлюємо значення функції Діріхле (вона може залежати від часу, тому передаємо current_time)
-                # Якщо твої ug_i не приймають час, можна просто передавати x, y: ug[i][1](x, y)
                 f_load[index] = ug[i][1](nodes[index][0], nodes[index][1]) 
     return f_load
 
 
 def get_boundary_elements_and_nodes(p, m, ug, degree=1):
     bounds = []
-    # gamma_i consists of [elements], [nodes]
     elements_1 = [j for j in range(p)]
     nodes_1 = [j for j in range(1, degree * p)]
 
@@ -38,46 +32,34 @@ def get_boundary_elements_and_nodes(p, m, ug, degree=1):
     nodes_2 = [(i + 1) * (degree * p + 1) - 1 for i in range(1, degree * m)]
 
     intersection = degree * p
-    # print(intersection)
     if (ug[0][0] == TypeOfBoundCond.DIRICHLET):
         nodes_1.append(intersection)
-        # print('1', nodes_1)
     else:
         nodes_2.insert(0, intersection)
-        # print('2', nodes_2)
 
     elements_3 = [p * m - 1 - j for j in range(p)]
     nodes_3 = [(degree * p + 1) * degree * m + j for j in reversed(range(1, degree * p))]
 
     intersection = (degree * p + 1) * (degree * m + 1) - 1
-    # print(intersection)
     if (ug[1][0] == TypeOfBoundCond.DIRICHLET):
         nodes_2.append(intersection)
-        # print('2', nodes_2)
     else:
         nodes_3.insert(0, intersection)
-        # print('3', nodes_3)
 
     elements_4 = [p * i for i in reversed(range(m))]
     nodes_4 = [i * (degree * p + 1) for i in reversed(range(1, degree * m))]
 
     intersection = degree * m * (degree * p + 1)
-    # print(intersection)
     if (ug[2][0] == TypeOfBoundCond.DIRICHLET):
         nodes_3.append(intersection)
-        # print('3', nodes_3)
     else:
         nodes_4.insert(0, intersection)
-        # print('4', nodes_4)
 
     intersection = 0
-    # print(intersection)
     if (ug[3][0] == TypeOfBoundCond.DIRICHLET):
         nodes_4.append(intersection)
-        # print('4', nodes_4)
     else:
         nodes_1.insert(0, intersection)
-        # print('1', nodes_1)
 
     gamma_1 = [elements_1, nodes_1]
     bounds.append(gamma_1)

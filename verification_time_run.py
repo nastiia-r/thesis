@@ -21,15 +21,11 @@ def f_space(x, y):
     """Просторова частина джерела"""
     return (2 * np.pi**2 - 1 + BETA_VAL) * np.sin(np.pi * x) * np.sin(np.pi * y)
 
-# ─────────────────────────────────────────────────
-# Головна функція
-# ─────────────────────────────────────────────────
 def run_time_convergence():
-    # ФІКСУЄМО ПРОСТІР ДЛЯ ІДЕАЛЬНОЇ ТОЧНОСТІ:
-    ap = 2               # Апроксимація 2-го порядку (квадратична)
-    p, m = 20, 20        # Сітка 20х20 (щоб просторова похибка була мізерною)
-    t_end = 1.0          # Рахуємо до t = 1.0
-    theta = 0.5          # Схема Кранка-Ніколсона
+    ap = 2
+    p, m = 20, 20
+    t_end = 1.0
+    theta = 0.5
 
     print(f"\n{'='*60}")
     print(f" ДОСЛІДЖЕННЯ ЗБІЖНОСТІ ЗА ЧАСОМ (ap={ap}, сітка {p}×{m})")
@@ -59,7 +55,6 @@ def run_time_convergence():
     F_base = s2d.set_up_vector(f_space, NL, EL, p, m, ap)
     U_0 = np.array([exact(x, y, 0.0) for x, y in NL])
 
-    # Список кроків за часом для перевірки
     dt_values = [0.1, 0.05, 0.025, 0.01]
     results = []
 
@@ -69,7 +64,6 @@ def run_time_convergence():
         num_steps = int(round(t_end / dt))
         print(f"\n  >>> Запуск: dt = {dt:.3f} ({num_steps} кроків)")
 
-        # Формуємо матрицю системи для конкретного dt
         A = M + theta * dt * KR
         A = f2e.apply_boundary_conditions_matrix(A, p, m, ug, ap)
         right_M = M - (1 - theta) * dt * KR
@@ -77,7 +71,6 @@ def run_time_convergence():
         U_n = U_0.copy()
         current_t = 0.0
         
-        # Для збереження гіфки (зберігаємо 20 кадрів, щоб не перевантажувати пам'ять)
         save_every = max(1, num_steps // 20)
         U_history = [U_n.copy()]
         time_history = [0.0]
@@ -99,14 +92,12 @@ def run_time_convergence():
                 U_history.append(U_n.copy())
                 time_history.append(current_t)
 
-        # Рахуємо похибки в кінці
         exact_final = lambda x, y: exact(x, y, t_end)
         err_L2, _, _ = g2d.compute_H1_error(exact_final, U_n, NL, EL, ap)
         
         print(f"      Похибка L2 = {err_L2:.6e}")
         results.append({"dt": dt, "steps": num_steps, "L2": err_L2})
 
-        # Зберігаємо GIF тільки для найменшого dt (найкращий результат)
         if dt == 0.01:
             gif_name = f"time_convergence_dt_{dt}.gif"
             print(f"      Збереження анімації у {gif_name} ...")
@@ -117,9 +108,6 @@ def run_time_convergence():
                 save_filename=gif_name
             )
 
-    # ─────────────────────────────────────────────────
-    # Друкуємо красиву таблицю для диплому
-    # ─────────────────────────────────────────────────
     print("\n\n╔════════════╦══════════════╦══════════════════╦════════════════════╗")
     print("║ Крок (Δt)  ║ К-сть кроків ║ Похибка L₂       ║ Відношення похибок ║")
     print("╠════════════╬══════════════╬══════════════════╬════════════════════╣")

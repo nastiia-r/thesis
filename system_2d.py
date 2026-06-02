@@ -3,7 +3,6 @@ import sympy as sp
 import mesh_2d as m2d
 import base_functions_2d as b2f
 from scipy.spatial import distance
-#system_2d
 
 def set_up_vector_point_sources(sources, strengths, nodes, p, m, ap):
     f_vec = np.zeros((ap * p + 1) * (ap * m + 1))
@@ -63,7 +62,6 @@ def set_up_vector(f, nodes, elements, p, m, ap):
         #     (18 + np.sqrt(30)) / 36
         # ]
 
-    # Обчислення інтегралів для кожного елемента
     for ioe, noe in enumerate(elements):
         x_coords = [nodes[i][0] for i in noe]
         y_coords = [nodes[i][1] for i in noe]
@@ -79,7 +77,6 @@ def set_up_vector(f, nodes, elements, p, m, ap):
                     f_val = f(x_val, y_val)
                     N_i = b2f.N(i, ksi_point, eta_point, ap)
 
-                    # Використання відповідних ваг Гаусса
                     integral_value += N_i * f_val * detJ * gauss_weights[ksi_idx] * gauss_weights[eta_idx]
 
             f_vec[noe[i]] += integral_value
@@ -191,11 +188,8 @@ def compute_element_mass_matrix(elements, nodes, ap):
     """
     element_mass_matrices = []
     
-    # Нам потрібні похідні лише для обчислення Якобіана, 
-    # самі базисні функції ми братимемо з b2f.N
     dN_dksi_list, dN_deta_list = compute_partial_derivatives(ap)
 
-    # Задаємо точки і ваги Гаусса так само, як і для матриці жорсткості
     if ap == 1:
         gauss_points = [-1 / np.sqrt(3), 1 / np.sqrt(3)]
         gauss_weights = [1.0, 1.0]
@@ -228,15 +222,12 @@ def compute_element_mass_matrix(elements, nodes, ap):
 
                 for ksi_idx, ksi_point in enumerate(gauss_points):
                     for eta_idx, eta_point in enumerate(gauss_points):
-                        # Обчислюємо Якобіан для поточних точок Гаусса
                         J = compute_jacobian(ksi_point, eta_point, x_coords, y_coords, dN_dksi_list, dN_deta_list)
-                        detJ = np.abs(np.linalg.det(J)) # Обов'язково модуль визначника!
+                        detJ = np.abs(np.linalg.det(J))
 
-                        # Обчислюємо значення самих базисних функцій
                         N_i = b2f.N(i, ksi_point, eta_point, ap)
                         N_j = b2f.N(j, ksi_point, eta_point, ap)
 
-                        # Інтегруємо: N_i * N_j * |J| * w_ksi * w_eta
                         integrand = N_i * N_j * detJ
                         integral_value += integrand * gauss_weights[ksi_idx] * gauss_weights[eta_idx]
 
@@ -254,7 +245,6 @@ def compute_element_reaction_matrix(elements, nodes, ap, beta):
     element_reaction_matrices = []
     dN_dksi_list, dN_deta_list = compute_partial_derivatives(ap)
 
-    # Точки і ваги Гаусса
     if ap == 1:
         gauss_points = [-1 / np.sqrt(3), 1 / np.sqrt(3)]
         gauss_weights = [1.0, 1.0]
@@ -293,13 +283,11 @@ def compute_element_reaction_matrix(elements, nodes, ap, beta):
                         N_i = b2f.N(i, ksi_point, eta_point, ap)
                         N_j = b2f.N(j, ksi_point, eta_point, ap)
 
-                        # Знаходимо глобальні координати точки Гаусса (щоб передати у функцію beta)
                         x_gp = sum(x_coords[n] * b2f.N(n, ksi_point, eta_point, ap) for n in range(len(noe)))
                         y_gp = sum(y_coords[n] * b2f.N(n, ksi_point, eta_point, ap) for n in range(len(noe)))
                         
                         beta_val = beta(x_gp, y_gp)
 
-                        # Інтегруємо: beta * N_i * N_j * |J| * w_ksi * w_eta
                         integrand = beta_val * N_i * N_j * detJ
                         integral_value += integrand * gauss_weights[ksi_idx] * gauss_weights[eta_idx]
 
